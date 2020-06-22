@@ -11,7 +11,8 @@ from bs4 import BeautifulSoup
 
 BASE_URL = "https://transcripts.fandom.com"
 WIKI_URL = "https://transcripts.fandom.com/wiki/Avatar:_The_Last_Airbender"
-UNWANTED_URL = "//avatar.wikia.com/wiki/Avatar_Wiki:Transcripts"
+UNWANTED_URL = "https://avatar.fandom.com/wiki/Avatar_Wiki:Transcripts"
+UNAIRED_PILOT_URL = "/wiki/Unaired_pilot_(Avatar:_The_Last_Airbender)"
 OUTPUT_DIR = "raw_data"
 OUTPUT_FILENAME = "transcript_{}.csv"
 
@@ -40,6 +41,7 @@ def extract_transcript_urls(page_content):
         for link in tr.find_all('a'):
             urls.append(link.get('href'))
     urls.remove(UNWANTED_URL)
+    urls.remove(UNAIRED_PILOT_URL)
     return urls
 
 
@@ -49,16 +51,17 @@ def extract_transcripts_to_files(urls):
     for url in urls:
         content = fetch_html_content(BASE_URL + url)
         if not content:
-            print("ERROR. Couldn't fetch the transcript from {}.".format(url), file=sys.stderr)
+            sys.stderr.write("ERROR. Couldn't fetch the transcript from {}.\n".format(url))
             sys.exit(2)
         soup = BeautifulSoup(content, features="html.parser")
 
         output = []
         for character in soup.find(id="WikiaArticle").find_all("th"):
-            line = character.next_sibling.text.strip("\n")
-            line = re.sub(r"\[.*\] ?", "", line)
-            if line.strip():
-                output.append((character.text.strip("\n"), line))
+            if character.next_sibling:
+                line = character.next_sibling.text.strip("\n")
+                line = re.sub(r"\[.*\] ?", "", line)
+                if line.strip():
+                    output.append((character.text.strip("\n"), line))
 
         filename = os.path.join(OUTPUT_DIR, OUTPUT_FILENAME.format(file_nb))
         with open(filename, "w", newline="\n", encoding="utf-8") as file:
@@ -75,7 +78,7 @@ if __name__ == "__main__":
     html_content = fetch_html_content()
 
     if not html_content:
-        print("ERROR. Couldn't fetch the main page.", file=sys.stderr)
+        sys.stderr.write("ERROR. Couldn't fetch the main page.\n")
         sys.exit(2)
 
     print("Copying all transcripts to raw_data/ ...")
