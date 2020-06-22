@@ -11,10 +11,10 @@ from bs4 import BeautifulSoup
 
 BASE_URL = "https://transcripts.fandom.com"
 WIKI_URL = "https://transcripts.fandom.com/wiki/Avatar:_The_Last_Airbender"
-UNWANTED_URL = "https://avatar.fandom.com/wiki/Avatar_Wiki:Transcripts"
-UNAIRED_PILOT_URL = "/wiki/Unaired_pilot_(Avatar:_The_Last_Airbender)"
 OUTPUT_DIR = "raw_data"
-OUTPUT_FILENAME = "transcript_{}.csv"
+OUTPUT_FILENAME = "transcript_{}_{}_{}.csv"
+
+BOOK_IDS = ["Book_One:_Water", "Book_Two:_Earth", "Book_Three:_Fire"]
 
 
 def create_output_folder(folder_name=OUTPUT_DIR):
@@ -37,18 +37,18 @@ def extract_transcript_urls(page_content):
 
     soup = BeautifulSoup(page_content, features="html.parser")
 
-    for tr in soup.find(id="mw-content-text").find_all("tr"):
-        for link in tr.find_all('a'):
-            urls.append(link.get('href'))
-    urls.remove(UNWANTED_URL)
-    urls.remove(UNAIRED_PILOT_URL)
+    for book_number, book_id in enumerate(BOOK_IDS, 1):
+        book_content = soup.find(id=book_id).parent.next_sibling.next_sibling.find_all("tr")[0]
+        for table_row in book_content.find_all("tr"):
+            episode_number = int(table_row.find("th").text.strip('\n '))
+            link = table_row.find("a")
+            urls.append((book_number, episode_number, link.text, link.get("href")))
     return urls
 
 
 def extract_transcripts_to_files(urls):
     """For each url, fetch the page and extract the text into a file"""
-    file_nb = 1
-    for url in urls:
+    for book_number, episode_number, episode_name, url in urls:
         content = fetch_html_content(BASE_URL + url)
         if not content:
             sys.stderr.write("ERROR. Couldn't fetch the transcript from {}.\n".format(url))
@@ -63,12 +63,18 @@ def extract_transcripts_to_files(urls):
                 if line.strip():
                     output.append((character.text.strip("\n"), line))
 
-        filename = os.path.join(OUTPUT_DIR, OUTPUT_FILENAME.format(file_nb))
+        filename = os.path.join(
+            OUTPUT_DIR,
+            OUTPUT_FILENAME.format(
+                book_number,
+                episode_number,
+                episode_name.replace(',', '').replace(' ', '_')
+            )
+        )
         with open(filename, "w", newline="\n", encoding="utf-8") as file:
             for row in output:
                 writer = csv.writer(file)
                 writer.writerow([row[0], row[1]])
-        file_nb += 1
 
 
 if __name__ == "__main__":
