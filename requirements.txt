@@ -3,5 +3,6 @@ requests
 numpy
 pandas
 spacy
+seaborn
 matplotlib
-https://github.com/explosion/spacy-models/releases/download/en_core_web_md-2.1.0/en_core_web_md-2.1.0.tar.gz#egg=en_core_web_md
+https://github.com/explosion/spacy-models/releases/download/en_core_web_md-2.3.0/en_core_web_md-2.3.0.tar.gz#egg=en_core_web_md
