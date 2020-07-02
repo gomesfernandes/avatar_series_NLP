@@ -12,6 +12,7 @@ from collections import defaultdict
 
 BASE_URL = "https://transcripts.fandom.com"
 WIKI_URL = "https://transcripts.fandom.com/wiki/Avatar:_The_Last_Airbender"
+LIBRARY_URL = "https://transcripts.fandom.com/wiki/The_Library"
 OUTPUT_DIR = "raw_data"
 OUTPUT_FILENAME = "transcript_{}_{}_{}.csv"
 BOOK_IDS = ["Book_One:_Water", "Book_Two:_Earth", "Book_Three:_Fire"]
@@ -153,6 +154,40 @@ def create_transcript_for_episode(episode_content):
     return transcript
 
 
+def extract_and_create_transcript_for_episode_10_season_2(output_dir):
+    """Extract the transcript for episode 10 season 2 and create the corresponding file.
+
+    The webpage for this episode has a different HTML structure than the others and therefore needs
+    a different extraction method.
+
+    Args:
+        output_dir (str): name of the output director
+    """
+    content = fetch_html_content(LIBRARY_URL)
+    if not content:
+        sys.stderr.write("ERROR. Couldn't fetch the transcript from {}.\n".format(url))
+        sys.exit(2)
+    soup = BeautifulSoup(content, features="html.parser")
+    main_body = soup.find_all("table", "MsoNormalTable")[0]
+
+    transcript = []
+
+    for row in main_body.find_all("tr"):
+        td1, td2 = list(row.find_all("td"))[:2]
+        if not td1.p or td1.p.text.strip("\n").strip() == '':
+            continue
+        character = td1.p.text.strip("\n").strip()
+        line = td2.p.text.strip("\n").strip()
+        while "[" in line:
+            line = re.sub(r"\[[^\]]*\] ?", "", line)
+        line = line.replace("\n", "").strip()
+        if line:
+            transcript.append((character, line))
+
+    filename = format_filename(OUTPUT_DIR, 2, 10, "The Library")
+    write_transcript_to_csv(filename, transcript)
+
+
 def write_transcript_to_csv(filename, transcript):
     """Write the transcript to a CSV file with the given filename.
 
@@ -177,5 +212,6 @@ if __name__ == "__main__":
 
     transcript_urls = extract_transcript_urls(html_content)
     extract_transcripts_to_files(OUTPUT_DIR, transcript_urls)
+    extract_and_create_transcript_for_episode_10_season_2(OUTPUT_DIR)
 
     print("Done.")
